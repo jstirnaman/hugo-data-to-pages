@@ -2,12 +2,12 @@
 'use strict';
 
 let config = {
-  root: 'example', //Root hugo folder, can be empty
-  dataFolder: 'data', //Data folder path (will fetch ALL files from here)
-  type: 'article', //Type name [basically layout] (save it under "layouts/NAME/single.html" or themes/THEME/layouts/NAME/single.html). Can be overridden on individual pages by defining "type" under "fields"
-  pages: 'articles', //Pages elemenet in your data, in case it's "posts" or "articles" etc.
-  contentPath: 'content', //Path to content directory (in case it's not "content")
-  hugoPath: '/snap/bin/hugo' //Path to hugo binary (if global, e.g. /snap/bin/hugo)
+  root: '', //Root hugo folder, can be empty
+  dataFolder: process.env.HUGO_DATAPAGES_DATA_PATH, //Data folder path (will fetch ALL files from here)
+  type: process.env.HUGO_DATAPAGES_TYPE, //Type name [basically layout] (save it under "layouts/NAME/single.html" or themes/THEME/layouts/NAME/single.html). Can be overridden on individual pages by defining "type" under "fields"
+  pages: process.env.HUGO_DATAPAGES_ELEMENT, //Pages element in your data, in case it's "posts" or "articles" etc.
+  contentPath: process.env.HUGO_DATAPAGES_CONTENT_PATH, //Path to content directory (in case it's not "content")
+  hugoPath: '../node_modules/.bin/hugo-extended' //Path to hugo binary (if global, e.g. /snap/bin/hugo)
 }
 
 const fs = require('fs');
@@ -20,7 +20,7 @@ const converToObject = (file) => {
   const filetype = file.split('.').pop();
   const fileContent = fs.readFileSync(config.root + config.dataFolder + '/' + file, 'utf8');
   if (filetype === 'json') return JSON.parse(fileContent);
-  if (filetype === 'yml' || filetype === 'yaml') return jsyml.safeLoad(fileContent);
+  if (filetype === 'yml' || filetype === 'yaml') return jsyml.load(fileContent);
   if (filetype === 'toml') return jstml.parse(fileContent);
 };
 const build = async (add, force) => {
@@ -70,7 +70,9 @@ const main = async (argvs) => {
   const mode = typeof argvs._[0] === 'undefined' ? 'default' : argvs._[0];
   const force = typeof argvs['force'] === 'undefined' ? false : true;
   const configFile = typeof argvs['configFile'] === 'undefined' ? false : require('./' + argvs['configFile']);
-  Object.assign(config, configFile); //overriding default settings
+  configFile && Object.assign(config, configFile); //overriding default settings
+  const configStr = typeof argvs['config'] === 'undefined' ? false : JSON.parse(argvs['config']);
+  configStr && Object.assign(config, configStr); //overriding default settings
   config.root = (!!config.root ? config.root : '.') + '/';
   const { execSync } = require('child_process');
   if (mode === 'server') {
@@ -116,10 +118,15 @@ const argvs = require('yargs')
     alias: 'f',
     description: 'Use this flag to skip folder removal prompts (be careful with this one!)'
   })
+  .option('config', {
+    alias: 'cj',
+    description: 'Optionally provide a JSON string as config'
+  })
   .option('configFile', {
     alias: 'c',
     description: 'Optionally use an external config file (JSON format only)'
   })
   .argv;
+
 
 main(argvs);
